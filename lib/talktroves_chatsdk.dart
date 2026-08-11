@@ -1,0 +1,14 @@
+export 'src/core/config/visitor_config.dart';
+export 'src/core/errors/visitor_exception.dart';
+export 'src/domain/entities/visitor_activity.dart';
+export 'src/domain/entities/visitor_session.dart';
+export 'src/domain/entities/polling_result.dart';
+export 'src/domain/repositories/visitor_repository.dart';
+export 'src/models/user_data.dart';
+export 'src/models/chat_message.dart';
+export 'src/models/attachment_file.dart';
+export 'src/services/chat_service_event.dart';
+export 'src/services/chatbot_service.dart';
+export 'src/services/visitor_chat_service.dart';
+export 'src/services/visitor_polling_service.dart';
+export 'src/widgets/support_chat_widget.dart';
