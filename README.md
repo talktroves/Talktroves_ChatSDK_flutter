@@ -254,7 +254,7 @@ Add this package to your Flutter project's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  talktroves_chatsdk: ^0.0.2
+  talktroves_chatsdk: ^0.0.3
 ```
 
 Run package resolution:
