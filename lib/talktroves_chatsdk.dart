@@ -11,4 +11,4 @@ export 'src/services/chat_service_event.dart';
 export 'src/services/chatbot_service.dart';
 export 'src/services/visitor_chat_service.dart';
 export 'src/services/visitor_polling_service.dart';
-export 'src/widgets/support_chat_widget.dart';
+export 'src/widgets/talktroves_chat_widget.dart';

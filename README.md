@@ -254,7 +254,7 @@ Add this package to your Flutter project's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  chat_support_widget: ^0.0.1
+  talktroves_chatsdk: ^0.0.2
 ```
 
 Run package resolution:
@@ -269,7 +269,7 @@ flutter pub get
 
 ```dart
 import 'package:flutter/material.dart';
-import 'package:chat_support_widget/chat_support_widget.dart';
+import 'package:talktroves_chatsdk/talktroves_chatsdk.dart';
 
 void main() {
   runApp(const MyApp());
@@ -286,8 +286,8 @@ class MyApp extends StatelessWidget {
           child: SizedBox(
             width: 380,
             height: 600,
-            child: SupportChatWidget(
-              config: SupportChatConfig(
+            child: TalktrovesChatWidget(
+              config: TalktrovesChatConfig(
                 visitorConfig: VisitorConfig(
                   baseUrl: 'https://your-chatscript-host',
                   tenantId: 'your-tenant-id',
@@ -317,7 +317,7 @@ class MyApp extends StatelessWidget {
 ### 1. Custom AppBar / Header Builder
 
 ```dart
-SupportChatWidget(
+TalktrovesChatWidget(
   config: config,
   headerBuilder: (context, config, isOnline) {
     return Container(
@@ -335,7 +335,7 @@ SupportChatWidget(
 ### 2. Custom Welcome Sub-header Builder
 
 ```dart
-SupportChatWidget(
+TalktrovesChatWidget(
   config: config,
   subHeaderBuilder: (context, config) {
     return Container(
@@ -350,7 +350,7 @@ SupportChatWidget(
 ### 3. Custom Chat Bubbles Builder
 
 ```dart
-SupportChatWidget(
+TalktrovesChatWidget(
   config: config,
   bubbleBuilder: (context, message, formattedTime) {
     if (message.sender == MessageSender.user) {
@@ -383,7 +383,7 @@ SupportChatWidget(
 ### 4. Custom Bottom Input Field & Toolbar Builder
 
 ```dart
-SupportChatWidget(
+TalktrovesChatWidget(
   config: config,
   inputBuilder: (context, controller, isTyping, onSend) {
     return Container(

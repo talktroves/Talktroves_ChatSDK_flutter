@@ -13,7 +13,7 @@ abstract final class TalkTrovesConfig {
 
   static const String domain = 'App.talktroves.com';
   static const String pageUrl = 'https://App.talktroves.com';
-  static const String pageTitle = 'Support Chat Demo';
+  static const String pageTitle = 'TalkTroves Chat Demo';
 
   static const bool enableSocket = true;
   static const Duration pollingInterval = Duration(seconds: 3);

@@ -19,20 +19,20 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Support Chat Example',
-      home: const SupportChatDemoPage(),
+      title: 'TalkTroves Chat Example',
+      home: const TalktrovesChatDemoPage(),
     );
   }
 }
 
-class SupportChatDemoPage extends StatefulWidget {
-  const SupportChatDemoPage({super.key});
+class TalktrovesChatDemoPage extends StatefulWidget {
+  const TalktrovesChatDemoPage({super.key});
 
   @override
-  State<SupportChatDemoPage> createState() => _SupportChatDemoPageState();
+  State<TalktrovesChatDemoPage> createState() => _TalktrovesChatDemoPageState();
 }
 
-class _SupportChatDemoPageState extends State<SupportChatDemoPage> {
+class _TalktrovesChatDemoPageState extends State<TalktrovesChatDemoPage> {
   final ImagePicker _imagePicker = ImagePicker();
   int _chatInstance = 0;
   bool _chatCreated = false;
@@ -40,8 +40,8 @@ class _SupportChatDemoPageState extends State<SupportChatDemoPage> {
   bool _startNewSessionOnNextOpen = false;
 
   /// A new session is created only on the first open or after explicit logout.
-  SupportChatConfig get _config {
-    return SupportChatConfig(
+  TalktrovesChatConfig get _config {
+    return TalktrovesChatConfig(
       visitorConfig: VisitorConfig(
         baseUrl: TalkTrovesConfig.baseUrl,
         tenantId: TalkTrovesConfig.tenantId,
@@ -129,7 +129,7 @@ class _SupportChatDemoPageState extends State<SupportChatDemoPage> {
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
-        title: const Text('Support Chat Demo'),
+        title: const Text('TalkTroves Chat Demo'),
         backgroundColor: const Color(0xFF2B5AD9),
         foregroundColor: Colors.white,
       ),
@@ -176,7 +176,7 @@ class _SupportChatDemoPageState extends State<SupportChatDemoPage> {
 /// Chat overlay that stays mounted while minimized to preserve its session.
 class _ChatPopupDialog extends StatefulWidget {
   final int chatInstance;
-  final SupportChatConfig config;
+  final TalktrovesChatConfig config;
   final Future<AttachmentFile?> Function() onPickAttachment;
   final VoidCallback onMinimized;
   final VoidCallback onEnded;
@@ -226,7 +226,7 @@ class _ChatPopupDialogState extends State<_ChatPopupDialog> {
         height: _isExpanded
             ? media.height - padding.top - padding.bottom
             : math.min(600.0, media.height - 48),
-        child: SupportChatWidget(
+        child: TalktrovesChatWidget(
           key: ValueKey(widget.chatInstance),
           config: widget.config,
           isExpanded: _isExpanded,

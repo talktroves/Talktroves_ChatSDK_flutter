@@ -11,7 +11,7 @@ import '../services/chat_service_event.dart';
 import '../services/chatbot_service.dart';
 import '../services/visitor_chat_service.dart';
 
-class SupportChatConfig {
+class TalktrovesChatConfig {
   final SupportUserData? userData;
   final String? deviceId;
 
@@ -28,7 +28,7 @@ class SupportChatConfig {
 
   final String subHeaderSubtitle;
 
-  const SupportChatConfig({
+  const TalktrovesChatConfig({
     this.userData,
     this.deviceId,
     this.customService,
@@ -47,12 +47,12 @@ class SupportChatConfig {
 typedef HeaderBuilder =
     Widget Function(
       BuildContext context,
-      SupportChatConfig config,
+      TalktrovesChatConfig config,
       bool isOnline,
     );
 
 typedef SubHeaderBuilder =
-    Widget Function(BuildContext context, SupportChatConfig config);
+    Widget Function(BuildContext context, TalktrovesChatConfig config);
 
 typedef MessageBubbleBuilder =
     Widget Function(
@@ -72,9 +72,9 @@ typedef InputAreaBuilder =
       VoidCallback onSend,
     );
 
-/// The highly customizable Support Chatbot Widget.
-class SupportChatWidget extends StatefulWidget {
-  final SupportChatConfig config;
+/// The highly customizable TalkTroves Chat Widget.
+class TalktrovesChatWidget extends StatefulWidget {
+  final TalktrovesChatConfig config;
 
   /// Callback when a visitor session is created / reconnected.
   final void Function(String tenantId, String sessionId)? onSessionReady;
@@ -117,7 +117,7 @@ class SupportChatWidget extends StatefulWidget {
   final Color primaryColor;
   final Color backgroundColor;
 
-  const SupportChatWidget({
+  const TalktrovesChatWidget({
     Key? key,
     required this.config,
     this.onSessionReady,
@@ -137,10 +137,10 @@ class SupportChatWidget extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<SupportChatWidget> createState() => _SupportChatWidgetState();
+  State<TalktrovesChatWidget> createState() => _TalktrovesChatWidgetState();
 }
 
-class _SupportChatWidgetState extends State<SupportChatWidget> {
+class _TalktrovesChatWidgetState extends State<TalktrovesChatWidget> {
   final List<ChatMessage> _messages = [];
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -221,7 +221,7 @@ class _SupportChatWidgetState extends State<SupportChatWidget> {
         widget.onSessionReady?.call(tenantId, sessionId);
         assert(() {
           debugPrint(
-            '[SupportChat] session ready tenant=$tenantId session=$sessionId',
+            '[TalktrovesChat] session ready tenant=$tenantId session=$sessionId',
           );
           return true;
         }());
@@ -241,7 +241,7 @@ class _SupportChatWidgetState extends State<SupportChatWidget> {
         });
       case ChatServiceErrorEvent(:final message):
         assert(() {
-          debugPrint('[SupportChat] service error: $message');
+          debugPrint('[TalktrovesChat] service error: $message');
           return true;
         }());
         break;
