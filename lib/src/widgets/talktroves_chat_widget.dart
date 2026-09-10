@@ -28,6 +28,41 @@ class TalktrovesChatConfig {
 
   final String subHeaderSubtitle;
 
+  /// Whether to display the initial rich welcome message with highlighted text & quick chips.
+  /// Defaults to `false`. Set to `true` to enable custom welcome messages.
+  final bool showWelcomeMessage;
+
+  /// Alias for [showWelcomeMessage]. Defaults to `false`.
+  bool get showOrderWelcome => showWelcomeMessage;
+
+  /// Highlighted clickable text or ID (e.g. "#914", "Booking #404", "Ticket #123").
+  final String? highlightText;
+
+  /// Alias for [highlightText].
+  String? get orderId => highlightText;
+
+  /// Custom template for the welcome message.
+  /// If provided, occurrences of `{highlightText}` or `{orderId}` will be replaced.
+  final String? welcomeMessage;
+
+  /// Alias for [welcomeMessage].
+  String? get orderWelcomeText => welcomeMessage;
+
+  /// Quick question suggestion options shown under the welcome message.
+  final List<String>? quickQuestions;
+
+  /// Optional accent color override for order links, chips, and support avatar.
+  /// Defaults to [TalktrovesChatWidget.primaryColor] (blue) if null.
+  final Color? accentColor;
+
+  /// Icon shown in the default assistant avatar. Defaults to [Icons.headset_mic].
+  /// Ignored when [botAvatar] is provided.
+  final IconData botIcon;
+
+  /// Optional custom avatar widget for assistant messages.
+  /// When set, this replaces the default circular [botIcon] avatar.
+  final Widget? botAvatar;
+
   const TalktrovesChatConfig({
     this.userData,
     this.deviceId,
@@ -37,10 +72,23 @@ class TalktrovesChatConfig {
     this.headerTitle = 'support',
     this.subHeaderTitle = 'live support',
     this.subHeaderSubtitle = 'Ask us anything',
-  }) : assert(
-         customService != null || visitorConfig != null,
-         'Either visitorConfig or customService must be provided.',
-       );
+    bool showWelcomeMessage = false,
+    bool showOrderWelcome = false,
+    String? highlightText,
+    String? orderId,
+    String? welcomeMessage,
+    String? orderWelcomeText,
+    this.quickQuestions,
+    this.accentColor,
+    this.botIcon = Icons.headset_mic,
+    this.botAvatar,
+  })  : showWelcomeMessage = showWelcomeMessage || showOrderWelcome,
+        highlightText = highlightText ?? orderId ?? '#914',
+        welcomeMessage = welcomeMessage ?? orderWelcomeText,
+        assert(
+          customService != null || visitorConfig != null,
+          'Either visitorConfig or customService must be provided.',
+        );
 }
 
 // Custom builder type definitions for ultimate flexibility
@@ -101,6 +149,19 @@ class TalktrovesChatWidget extends StatefulWidget {
   /// Callback when the menu (three dots) button is pressed.
   final VoidCallback? onMenuPressed;
 
+  /// Callback when the clickable highlighted text inside the initial welcome message is tapped.
+  final void Function(String highlightText)? onHighlightTap;
+
+  /// Callback when the clickable Order ID inside the initial welcome message is tapped.
+  final void Function(String orderId)? onOrderTap;
+
+  /// Callback when a quick question option chip is tapped.
+  final void Function(String question)? onQuestionTap;
+
+  /// Optional accent color override for order links, chips, and support avatar.
+  /// Defaults to [primaryColor] (blue) if null.
+  final Color? accentColor;
+
   /// Custom builder for the App Bar / Main Header.
   final HeaderBuilder? headerBuilder;
 
@@ -125,9 +186,13 @@ class TalktrovesChatWidget extends StatefulWidget {
     this.onExitPressed,
     this.onMinimizePressed,
     this.onExpandPressed,
-    this.isExpanded = false,
+    this.isExpanded = true,
     this.onAttachmentPressed,
     this.onMenuPressed,
+    this.onHighlightTap,
+    this.onOrderTap,
+    this.onQuestionTap,
+    this.accentColor,
     this.headerBuilder,
     this.subHeaderBuilder,
     this.bubbleBuilder,
@@ -141,6 +206,9 @@ class TalktrovesChatWidget extends StatefulWidget {
 }
 
 class _TalktrovesChatWidgetState extends State<TalktrovesChatWidget> {
+  Color get _themeColor =>
+      widget.accentColor ?? widget.config.accentColor ?? widget.primaryColor;
+
   final List<ChatMessage> _messages = [];
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -173,8 +241,29 @@ class _TalktrovesChatWidgetState extends State<TalktrovesChatWidget> {
 
     // Load initial greeting and system state
     _localUserData = widget.config.userData;
-    _messages.add(ChatMessage.system('ended the chat'));
-    _messages.add(ChatMessage.assistant('Hi! How can I help you today?'));
+    if (widget.config.showWelcomeMessage) {
+      final highlightStr = widget.config.highlightText ?? '#914';
+      final rawMsg = widget.config.welcomeMessage;
+      final welcomeText = rawMsg != null
+          ? rawMsg
+              .replaceAll('{highlightText}', highlightStr)
+              .replaceAll('{orderId}', highlightStr)
+          : 'Hi! This is your $highlightStr.\nWhat would you like to know about this?';
+      _messages.add(
+        ChatMessage.orderWelcome(
+          welcomeText,
+          quickReplies: widget.config.quickQuestions ??
+              const [
+                'Where is my order?',
+                'What\'s my order status?',
+                'Why is my order delayed?',
+                'I have an issue with my order',
+              ],
+        ),
+      );
+    } else {
+      _messages.add(ChatMessage.assistant('Hi! How can I help you today?'));
+    }
 
     _eventsSubscription = _chatbotService.events.listen(_onChatServiceEvent);
     unawaited(_bootstrapService());
@@ -607,119 +696,128 @@ class _TalktrovesChatWidgetState extends State<TalktrovesChatWidget> {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 8.0,
+      elevation: widget.isExpanded ? 0.0 : 8.0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.0)),
+      shape: widget.isExpanded
+          ? const RoundedRectangleBorder()
+          : RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.0)),
       clipBehavior: Clip.antiAlias,
       child: Material(
         color: Colors.white,
-        child: Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            Column(
-              children: [
-                // 1. Main Header / App Bar
-                widget.headerBuilder != null
-                    ? widget.headerBuilder!(context, widget.config, _isOnline)
-                    : _buildDefaultHeader(),
+        child: SafeArea(
+          top: widget.isExpanded,
+          bottom: widget.isExpanded,
+          child: Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              Column(
+                children: [
+                  // 1. Main Header / App Bar
+                  widget.headerBuilder != null
+                      ? widget.headerBuilder!(context, widget.config, _isOnline)
+                      : _buildDefaultHeader(),
 
-                // 2. Sub Header Live Support Banner
-                widget.subHeaderBuilder != null
-                    ? widget.subHeaderBuilder!(context, widget.config)
-                    : _buildDefaultSubHeader(),
+                  // 2. Sub Header Live Support Banner
+                  widget.subHeaderBuilder != null
+                      ? widget.subHeaderBuilder!(context, widget.config)
+                      : _buildDefaultSubHeader(),
 
-                // 3. Chat Message Log — Expanded so keyboard shrinks this area.
-                Expanded(
-                  child: Container(
-                    color: widget.backgroundColor,
-                    child: ListView.builder(
-                      controller: _scrollController,
-                      keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
+                  // 3. Chat Message Log — Expanded so keyboard shrinks this area.
+                  Expanded(
+                    child: Container(
+                      color: widget.backgroundColor,
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0,
+                          vertical: 12.0,
+                        ),
+                        itemCount: _messages.length,
+                        itemBuilder: (context, index) {
+                          final message = _messages[index];
+                          final timeStr = DateFormat(
+                            'h:mm a',
+                          ).format(message.timestamp);
+
+                          // User Custom Bubble Builder support
+                          if (widget.bubbleBuilder != null) {
+                            return widget.bubbleBuilder!(
+                              context,
+                              message,
+                              timeStr,
+                            );
+                          }
+
+                          if (message.sender == MessageSender.system) {
+                            return _buildDefaultSystemMessage(message);
+                          } else if (message.sender == MessageSender.user) {
+                            return _buildDefaultUserBubble(message, timeStr);
+                          } else {
+                            return _buildDefaultAssistantBubble(
+                              message,
+                              timeStr,
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+
+                  if (_isTyping && widget.inputBuilder == null)
+                    Container(
+                      color: widget.backgroundColor,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0,
-                        vertical: 12.0,
+                        horizontal: 24.0,
+                        vertical: 4.0,
                       ),
-                      itemCount: _messages.length,
-                      itemBuilder: (context, index) {
-                        final message = _messages[index];
-                        final timeStr = DateFormat(
-                          'h:mm a',
-                        ).format(message.timestamp);
-
-                        // User Custom Bubble Builder support
-                        if (widget.bubbleBuilder != null) {
-                          return widget.bubbleBuilder!(
-                            context,
-                            message,
-                            timeStr,
-                          );
-                        }
-
-                        if (message.sender == MessageSender.system) {
-                          return _buildDefaultSystemMessage(message);
-                        } else if (message.sender == MessageSender.user) {
-                          return _buildDefaultUserBubble(message, timeStr);
-                        } else {
-                          return _buildDefaultAssistantBubble(message, timeStr);
-                        }
-                      },
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${widget.config.botName} is typing...',
+                        style: TextStyle(
+                          fontSize: 12.0,
+                          color: Colors.grey.shade600,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
                     ),
+
+                  // 4. Chat Input Section
+                  widget.inputBuilder != null
+                      ? widget.inputBuilder!(
+                          context,
+                          _inputController,
+                          _isTyping,
+                          _pendingAttachment,
+                          _handleAttachmentSelection,
+                          _handleRemoveAttachment,
+                          _sendMessage,
+                        )
+                      : _buildDefaultInputSection(),
+                ],
+              ),
+              if (_isMenuOpen) ...[
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _hideMenu,
+                    child: const ColoredBox(color: Colors.transparent),
                   ),
                 ),
-
-                if (_isTyping && widget.inputBuilder == null)
-                  Container(
-                    color: widget.backgroundColor,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24.0,
-                      vertical: 4.0,
-                    ),
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '${widget.config.botName} is typing...',
-                      style: TextStyle(
-                        fontSize: 12.0,
-                        color: Colors.grey.shade600,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ),
-
-                // 4. Chat Input Section
-                widget.inputBuilder != null
-                    ? widget.inputBuilder!(
-                        context,
-                        _inputController,
-                        _isTyping,
-                        _pendingAttachment,
-                        _handleAttachmentSelection,
-                        _handleRemoveAttachment,
-                        _sendMessage,
-                      )
-                    : _buildDefaultInputSection(),
+                CompositedTransformFollower(
+                  link: _menuLayerLink,
+                  showWhenUnlinked: false,
+                  // Button sits on the right; open menu upward + left so it
+                  // stays fully inside the chatbot popup.
+                  targetAnchor: Alignment.topRight,
+                  followerAnchor: Alignment.bottomRight,
+                  offset: const Offset(0, -8),
+                  child: _buildMenuContent(),
+                ),
               ],
-            ),
-            if (_isMenuOpen) ...[
-              Positioned.fill(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _hideMenu,
-                  child: const ColoredBox(color: Colors.transparent),
-                ),
-              ),
-              CompositedTransformFollower(
-                link: _menuLayerLink,
-                showWhenUnlinked: false,
-                // Button sits on the right; open menu upward + left so it
-                // stays fully inside the chatbot popup.
-                targetAnchor: Alignment.topRight,
-                followerAnchor: Alignment.bottomRight,
-                offset: const Offset(0, -8),
-                child: _buildMenuContent(),
-              ),
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -742,7 +840,7 @@ class _TalktrovesChatWidgetState extends State<TalktrovesChatWidget> {
             ),
             alignment: Alignment.center,
             child: const Icon(
-              Icons.chat_bubble_outline_rounded,
+              Icons.headset_mic,
               color: Colors.white,
               size: 22.0,
             ),
@@ -786,24 +884,34 @@ class _TalktrovesChatWidgetState extends State<TalktrovesChatWidget> {
               ],
             ),
           ),
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            tooltip: widget.isExpanded ? 'Exit fullscreen' : 'Fullscreen',
-            icon: Icon(
-              widget.isExpanded ? Icons.fullscreen_exit : Icons.crop_square,
-              color: Colors.white70,
-              size: 20.0,
+          if (widget.onExpandPressed != null) ...[
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              tooltip: widget.isExpanded ? 'Exit fullscreen' : 'Fullscreen',
+              icon: Icon(
+                widget.isExpanded ? Icons.fullscreen_exit : Icons.crop_square,
+                color: Colors.white70,
+                size: 20.0,
+              ),
+              onPressed: widget.onExpandPressed,
             ),
-            onPressed: widget.onExpandPressed,
-          ),
-          const SizedBox(width: 12.0),
+            const SizedBox(width: 12.0),
+          ],
           IconButton(
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
             tooltip: 'Close',
-            icon: const Icon(Icons.remove, color: Colors.white70, size: 22.0),
-            onPressed: widget.onMinimizePressed ?? widget.onExitPressed,
+            icon: const Icon(Icons.close, color: Colors.white, size: 22.0),
+            onPressed: () {
+              if (widget.onMinimizePressed != null) {
+                widget.onMinimizePressed!();
+              } else if (widget.onExitPressed != null) {
+                widget.onExitPressed!();
+              } else {
+                Navigator.of(context).maybePop();
+              }
+            },
           ),
         ],
       ),
@@ -976,10 +1084,34 @@ class _TalktrovesChatWidgetState extends State<TalktrovesChatWidget> {
     );
   }
 
+  Widget _buildBotAvatar() {
+    final customAvatar = widget.config.botAvatar;
+    if (customAvatar != null) {
+      return SizedBox(
+        width: 32.0,
+        height: 32.0,
+        child: ClipOval(child: customAvatar),
+      );
+    }
+
+    return CircleAvatar(
+      radius: 16.0,
+      backgroundColor: _themeColor,
+      child: Icon(
+        widget.config.botIcon,
+        color: Colors.white,
+        size: 20.0,
+      ),
+    );
+  }
+
   Widget _buildDefaultAssistantBubble(ChatMessage message, String timeStr) {
     final hasUpdateInfoLink = message.content.contains(
       'Hi! How can I help you today?',
     );
+
+    final isOrderMsg = message.isOrderWelcome;
+    final orderId = widget.config.orderId ?? '#914';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),
@@ -988,77 +1120,195 @@ class _TalktrovesChatWidgetState extends State<TalktrovesChatWidget> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              radius: 16.0,
-              backgroundColor: Colors.grey.shade300,
-              child: const Icon(Icons.person, color: Colors.white, size: 20.0),
-            ),
+            _buildBotAvatar(),
             const SizedBox(width: 8.0),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.config.botName,
-                  style: TextStyle(
-                    fontSize: 12.0,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 4.0),
-                Container(
-                  constraints: const BoxConstraints(maxWidth: 240.0),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 10.0,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(
-                      color: const Color(0xFFEBEFF5),
-                      width: 1.0,
-                    ),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(4.0),
-                      topRight: Radius.circular(16.0),
-                      bottomLeft: Radius.circular(16.0),
-                      bottomRight: Radius.circular(16.0),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.config.botName,
+                    style: TextStyle(
+                      fontSize: 12.0,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade600,
                     ),
                   ),
-                  child: Text(
-                    message.content,
-                    style: const TextStyle(
-                      color: Colors.black87,
-                      fontSize: 15.0,
+                  const SizedBox(height: 4.0),
+                  Container(
+                    constraints: const BoxConstraints(maxWidth: 280.0),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 10.0,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(
+                        color: const Color(0xFFEBEFF5),
+                        width: 1.0,
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(4.0),
+                        topRight: Radius.circular(16.0),
+                        bottomLeft: Radius.circular(16.0),
+                        bottomRight: Radius.circular(16.0),
+                      ),
+                    ),
+                    child: isOrderMsg
+                        ? _buildClickableOrderContent(message.content, orderId)
+                        : Text(
+                            message.content,
+                            style: const TextStyle(
+                              color: Colors.black87,
+                              fontSize: 15.0,
+                            ),
+                          ),
+                  ),
+                  const SizedBox(height: 4.0),
+                  Text(
+                    timeStr,
+                    style: TextStyle(
+                      fontSize: 11.0,
+                      color: Colors.grey.shade500,
                     ),
                   ),
-                ),
-                const SizedBox(height: 4.0),
-                Text(
-                  timeStr,
-                  style: TextStyle(fontSize: 11.0, color: Colors.grey.shade500),
-                ),
-                if (hasUpdateInfoLink) ...[
-                  const SizedBox(height: 12.0),
-                  InkWell(
-                    onTap: _handleUpdateInfoPressed,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Text(
-                        'Please update your info',
-                        style: TextStyle(
-                          color: widget.primaryColor,
-                          fontWeight: FontWeight.w600,
-                          decoration: TextDecoration.underline,
-                          fontSize: 14.0,
+                  if (isOrderMsg &&
+                      (message.quickReplies?.isNotEmpty ?? false)) ...[
+                    _buildQuickQuestionsGrid(message.quickReplies!),
+                  ],
+                  if (hasUpdateInfoLink) ...[
+                    const SizedBox(height: 12.0),
+                    InkWell(
+                      onTap: _handleUpdateInfoPressed,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Text(
+                          'Please update your info',
+                          style: TextStyle(
+                            color: widget.primaryColor,
+                            fontWeight: FontWeight.w600,
+                            decoration: TextDecoration.underline,
+                            fontSize: 14.0,
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClickableOrderContent(String content, String highlight) {
+    String target = highlight;
+    if (!content.contains(target) && content.contains('Order $highlight')) {
+      target = 'Order $highlight';
+    }
+
+    if (!content.contains(target)) {
+      return Text(
+        content,
+        style: const TextStyle(color: Colors.black87, fontSize: 15.0),
+      );
+    }
+
+    final targetIndex = content.indexOf(target);
+    final prefix = content.substring(0, targetIndex);
+    final suffix = content.substring(targetIndex + target.length);
+
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(
+          color: Colors.black87,
+          fontSize: 15.0,
+          height: 1.35,
+        ),
+        children: [
+          if (prefix.isNotEmpty) TextSpan(text: prefix),
+          WidgetSpan(
+            alignment: PlaceholderAlignment.baseline,
+            baseline: TextBaseline.alphabetic,
+            child: InkWell(
+              onTap: () {
+                widget.onHighlightTap?.call(highlight);
+                widget.onOrderTap?.call(highlight);
+              },
+              child: Text(
+                target,
+                style: TextStyle(
+                  color: _themeColor,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.underline,
+                  decorationColor: _themeColor,
+                  fontSize: 15.0,
+                ),
+              ),
+            ),
+          ),
+          if (suffix.isNotEmpty) TextSpan(text: suffix),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickQuestionsGrid(List<String> questions) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12.0),
+      child: Column(
+        children: [
+          for (int i = 0; i < questions.length; i += 2) ...[
+            if (i > 0) const SizedBox(height: 8.0),
+            Row(
+              children: [
+                Expanded(child: _buildQuestionChip(questions[i])),
+                const SizedBox(width: 8.0),
+                if (i + 1 < questions.length)
+                  Expanded(child: _buildQuestionChip(questions[i + 1]))
+                else
+                  const Expanded(child: SizedBox.shrink()),
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuestionChip(String text) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _inputController.text = text;
+            _inputController.selection = TextSelection.fromPosition(
+              TextPosition(offset: text.length),
+            );
+          });
+          widget.onQuestionTap?.call(text);
+        },
+        borderRadius: BorderRadius.circular(24.0),
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 10.0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: _themeColor, width: 1.2),
+            borderRadius: BorderRadius.circular(24.0),
+          ),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _themeColor,
+              fontSize: 13.0,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ),
     );
@@ -1660,6 +1910,92 @@ class _EmailTranscriptDialogState extends State<_EmailTranscriptDialog> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// A full-screen page wrapper for [TalktrovesChatWidget].
+class TalktrovesChatPage extends StatelessWidget {
+  final TalktrovesChatConfig config;
+  final void Function(String tenantId, String sessionId)? onSessionReady;
+  final VoidCallback? onUpdateInfoPressed;
+  final VoidCallback? onExitPressed;
+  final Future<AttachmentFile?> Function()? onAttachmentPressed;
+  final VoidCallback? onMenuPressed;
+  final void Function(String orderId)? onOrderTap;
+  final void Function(String question)? onQuestionTap;
+  final Color primaryColor;
+  final Color backgroundColor;
+  final Color? accentColor;
+
+  const TalktrovesChatPage({
+    Key? key,
+    required this.config,
+    this.onSessionReady,
+    this.onUpdateInfoPressed,
+    this.onExitPressed,
+    this.onAttachmentPressed,
+    this.onMenuPressed,
+    this.onOrderTap,
+    this.onQuestionTap,
+    this.primaryColor = const Color(0xFF2B5AD9),
+    this.backgroundColor = const Color(0xFFF5F7FB),
+    this.accentColor,
+  }) : super(key: key);
+
+  /// Helper to push a full-screen chat page onto the navigation stack.
+  static Future<T?> open<T>(
+    BuildContext context, {
+    required TalktrovesChatConfig config,
+    void Function(String tenantId, String sessionId)? onSessionReady,
+    VoidCallback? onUpdateInfoPressed,
+    VoidCallback? onExitPressed,
+    Future<AttachmentFile?> Function()? onAttachmentPressed,
+    VoidCallback? onMenuPressed,
+    void Function(String orderId)? onOrderTap,
+    void Function(String question)? onQuestionTap,
+    Color primaryColor = const Color(0xFF2B5AD9),
+    Color backgroundColor = const Color(0xFFF5F7FB),
+    Color? accentColor,
+  }) {
+    return Navigator.of(context).push<T>(
+      MaterialPageRoute(
+        builder: (ctx) => TalktrovesChatPage(
+          config: config,
+          onSessionReady: onSessionReady,
+          onUpdateInfoPressed: onUpdateInfoPressed,
+          onExitPressed: onExitPressed ?? () => Navigator.of(ctx).pop(),
+          onAttachmentPressed: onAttachmentPressed,
+          onMenuPressed: onMenuPressed,
+          onOrderTap: onOrderTap,
+          onQuestionTap: onQuestionTap,
+          primaryColor: primaryColor,
+          backgroundColor: backgroundColor,
+          accentColor: accentColor,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      body: TalktrovesChatWidget(
+        config: config,
+        isExpanded: true,
+        onSessionReady: onSessionReady,
+        onUpdateInfoPressed: onUpdateInfoPressed,
+        onExitPressed: onExitPressed ?? () => Navigator.of(context).pop(),
+        onMinimizePressed: () => Navigator.of(context).pop(),
+        onAttachmentPressed: onAttachmentPressed,
+        onMenuPressed: onMenuPressed,
+        onOrderTap: onOrderTap,
+        onQuestionTap: onQuestionTap,
+        primaryColor: primaryColor,
+        backgroundColor: backgroundColor,
+        accentColor: accentColor,
       ),
     );
   }

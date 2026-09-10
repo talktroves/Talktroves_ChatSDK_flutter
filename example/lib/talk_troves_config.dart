@@ -9,7 +9,7 @@ abstract final class TalkTrovesConfig {
   static const String baseUrl = 'https://App.talktroves.com';
 
   /// Real tenant id from working web widget (`tid`).
-  static const String tenantId = '6a4ebd2deb5fb50e9862d253';
+  static const String tenantId = '6a1ea6da3c93b1284382efdd';
 
   static const String domain = 'App.talktroves.com';
   static const String pageUrl = 'https://App.talktroves.com';

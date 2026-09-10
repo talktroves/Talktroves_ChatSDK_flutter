@@ -1,6 +1,3 @@
-import 'dart:math' as math;
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:talktroves_chatsdk/talktroves_chatsdk.dart';
@@ -34,10 +31,6 @@ class TalktrovesChatDemoPage extends StatefulWidget {
 
 class _TalktrovesChatDemoPageState extends State<TalktrovesChatDemoPage> {
   final ImagePicker _imagePicker = ImagePicker();
-  int _chatInstance = 0;
-  bool _chatCreated = false;
-  bool _chatVisible = false;
-  bool _startNewSessionOnNextOpen = false;
 
   /// A new session is created only on the first open or after explicit logout.
   TalktrovesChatConfig get _config {
@@ -66,6 +59,16 @@ class _TalktrovesChatDemoPageState extends State<TalktrovesChatDemoPage> {
       headerTitle: 'support',
       subHeaderTitle: 'live support',
       subHeaderSubtitle: 'Ask us anything',
+      showWelcomeMessage: true,
+      highlightText: 'Order #914',
+      welcomeMessage:
+          'Hi! This is your Order #914.\nWhat would you like to know about this order?',
+      quickQuestions: const [
+        'Where is my order?',
+        'What\'s my order status?',
+        'Why is my order delayed?',
+        'I have an issue with my order',
+      ],
     );
   }
 
@@ -94,34 +97,20 @@ class _TalktrovesChatDemoPageState extends State<TalktrovesChatDemoPage> {
     };
   }
 
-  void _minimizeChat() {
-    setState(() {
-      _chatVisible = false;
-    });
-  }
-
-  void _endChatSession() {
-    setState(() {
-      _chatVisible = false;
-      _startNewSessionOnNextOpen = true;
-    });
-    if (kDebugMode) {
-      debugPrint(
-        '[TalkTroves] Chat ended — next open will create a new session | '
-        'tenant=${TalkTrovesConfig.tenantId}',
-      );
-    }
-  }
-
-  void _openChatPopup() {
-    setState(() {
-      if (_startNewSessionOnNextOpen) {
-        _chatInstance++;
-        _startNewSessionOnNextOpen = false;
-      }
-      _chatCreated = true;
-      _chatVisible = true;
-    });
+  void _openChatFullScreen() {
+    TalktrovesChatPage.open(
+      context,
+      config: _config,
+      onAttachmentPressed: _pickImageAttachment,
+      onOrderTap: (orderId) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Navigating to Order details ($orderId)...'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -133,117 +122,21 @@ class _TalktrovesChatDemoPageState extends State<TalktrovesChatDemoPage> {
         backgroundColor: const Color(0xFF2B5AD9),
         foregroundColor: Colors.white,
       ),
-      body: Stack(
-        children: [
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'Tap the chat button to open live support.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.black54),
-              ),
-            ),
+      body: const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'Tap the chat button to open live support.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, color: Colors.black54),
           ),
-          if (_chatCreated)
-            Visibility(
-              visible: _chatVisible,
-              maintainState: true,
-              maintainAnimation: true,
-              maintainSize: true,
-              child: _ChatPopupDialog(
-                chatInstance: _chatInstance,
-                config: _config,
-                onPickAttachment: _pickImageAttachment,
-                onMinimized: _minimizeChat,
-                onEnded: _endChatSession,
-              ),
-            ),
-        ],
-      ),
-      floatingActionButton: _chatVisible
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: _openChatPopup,
-              backgroundColor: const Color(0xFF2B5AD9),
-              icon: const Icon(Icons.chat_bubble_outline),
-              label: const Text('Support'),
-            ),
-    );
-  }
-}
-
-/// Chat overlay that stays mounted while minimized to preserve its session.
-class _ChatPopupDialog extends StatefulWidget {
-  final int chatInstance;
-  final TalktrovesChatConfig config;
-  final Future<AttachmentFile?> Function() onPickAttachment;
-  final VoidCallback onMinimized;
-  final VoidCallback onEnded;
-
-  const _ChatPopupDialog({
-    required this.chatInstance,
-    required this.config,
-    required this.onPickAttachment,
-    required this.onMinimized,
-    required this.onEnded,
-  });
-
-  @override
-  State<_ChatPopupDialog> createState() => _ChatPopupDialogState();
-}
-
-class _ChatPopupDialogState extends State<_ChatPopupDialog> {
-  bool _isExpanded = false;
-
-  void _toggleExpand() {
-    setState(() {
-      _isExpanded = !_isExpanded;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final media = MediaQuery.sizeOf(context);
-    final padding = MediaQuery.paddingOf(context);
-
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: _isExpanded
-          ? EdgeInsets.only(
-              top: padding.top,
-              bottom: padding.bottom,
-              left: padding.left,
-              right: padding.right,
-            )
-          : const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        width: _isExpanded
-            ? media.width - padding.left - padding.right
-            : math.min(380.0, media.width - 32),
-        height: _isExpanded
-            ? media.height - padding.top - padding.bottom
-            : math.min(600.0, media.height - 48),
-        child: TalktrovesChatWidget(
-          key: ValueKey(widget.chatInstance),
-          config: widget.config,
-          isExpanded: _isExpanded,
-          onSessionReady: (tenantId, sessionId) {
-            if (kDebugMode) {
-              debugPrint(
-                '[TalkTroves] Session created → chat with '
-                'tid=$tenantId sid=$sessionId',
-              );
-            }
-          },
-          onMinimizePressed: widget.onMinimized,
-          onExpandPressed: _toggleExpand,
-          onExitPressed: widget.onEnded,
-          onAttachmentPressed: widget.onPickAttachment,
-          onMenuPressed: () {},
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openChatFullScreen,
+        backgroundColor: const Color(0xFF2B5AD9),
+        icon: const Icon(Icons.headset_mic),
+        label: const Text('Support'),
       ),
     );
   }

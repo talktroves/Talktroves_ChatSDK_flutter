@@ -23,6 +23,9 @@ class ChatMessage {
   final AttachmentFile? attachment;
   final ChatMessageStyle style;
 
+  final bool isOrderWelcome;
+  final List<String>? quickReplies;
+
   const ChatMessage({
     required this.id,
     required this.content,
@@ -31,6 +34,8 @@ class ChatMessage {
     this.status = MessageStatus.sent,
     this.attachment,
     this.style = ChatMessageStyle.bubble,
+    this.isOrderWelcome = false,
+    this.quickReplies,
   });
 
   /// Helper constructor for system messages.
@@ -79,6 +84,22 @@ class ChatMessage {
     );
   }
 
+  /// Helper constructor for initial order welcome assistant messages.
+  factory ChatMessage.orderWelcome(
+    String content, {
+    List<String>? quickReplies,
+  }) {
+    return ChatMessage(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      content: content,
+      sender: MessageSender.assistant,
+      timestamp: DateTime.now(),
+      status: MessageStatus.seen,
+      isOrderWelcome: true,
+      quickReplies: quickReplies,
+    );
+  }
+
   /// Creates a copy of this message with customized values.
   ChatMessage copyWith({
     String? id,
@@ -88,6 +109,8 @@ class ChatMessage {
     MessageStatus? status,
     AttachmentFile? attachment,
     ChatMessageStyle? style,
+    bool? isOrderWelcome,
+    List<String>? quickReplies,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -97,6 +120,8 @@ class ChatMessage {
       status: status ?? this.status,
       attachment: attachment ?? this.attachment,
       style: style ?? this.style,
+      isOrderWelcome: isOrderWelcome ?? this.isOrderWelcome,
+      quickReplies: quickReplies ?? this.quickReplies,
     );
   }
 }
