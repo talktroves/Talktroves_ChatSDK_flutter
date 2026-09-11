@@ -15,6 +15,9 @@ abstract final class TalkTrovesConfig {
   static const String pageUrl = 'https://App.talktroves.com';
   static const String pageTitle = 'TalkTroves Chat Demo';
 
+  /// Tenant history origin for previous chats.
+  static const String historyBaseUrl = 'https://foodpedia.talktroves.com';
+
   static const bool enableSocket = true;
   static const Duration pollingInterval = Duration(seconds: 3);
   static const int timezoneOffsetHours = 5;

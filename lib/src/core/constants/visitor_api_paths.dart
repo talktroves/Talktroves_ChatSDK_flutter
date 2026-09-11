@@ -4,4 +4,7 @@ abstract final class VisitorApiPaths {
   static const String session = '$base/session';
   static const String polling = '$base/polling';
   static const String activity = '$base/activity';
+
+  /// Tenant conversation history (previous chats).
+  static const String tenantHistory = '/api/tenant/history';
 }

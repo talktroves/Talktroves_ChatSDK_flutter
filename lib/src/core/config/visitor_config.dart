@@ -44,6 +44,15 @@ class VisitorConfig {
   /// Extra headers forwarded on HTTP calls (auth tokens, etc.).
   final Map<String, String> headers;
 
+  /// When true, previous chats are loaded from `/api/tenant/history`.
+  final bool fetchChatHistory;
+
+  /// Page size for tenant history. Defaults to `20`.
+  final int historyPageSize;
+
+  /// Optional origin for `/api/tenant/history`. Defaults to [baseUrl].
+  final String? historyBaseUrl;
+
   const VisitorConfig({
     required this.baseUrl,
     required this.tenantId,
@@ -59,6 +68,9 @@ class VisitorConfig {
     this.pollingInterval = const Duration(seconds: 3),
     this.socketPath,
     this.headers = const {},
+    this.fetchChatHistory = true,
+    this.historyPageSize = 20,
+    this.historyBaseUrl,
   });
 
   /// Normalized base URL without a trailing slash.
@@ -84,6 +96,9 @@ class VisitorConfig {
     Duration? pollingInterval,
     String? socketPath,
     Map<String, String>? headers,
+    bool? fetchChatHistory,
+    int? historyPageSize,
+    String? historyBaseUrl,
   }) {
     return VisitorConfig(
       baseUrl: baseUrl ?? this.baseUrl,
@@ -100,6 +115,9 @@ class VisitorConfig {
       pollingInterval: pollingInterval ?? this.pollingInterval,
       socketPath: socketPath ?? this.socketPath,
       headers: headers ?? this.headers,
+      fetchChatHistory: fetchChatHistory ?? this.fetchChatHistory,
+      historyPageSize: historyPageSize ?? this.historyPageSize,
+      historyBaseUrl: historyBaseUrl ?? this.historyBaseUrl,
     );
   }
 }

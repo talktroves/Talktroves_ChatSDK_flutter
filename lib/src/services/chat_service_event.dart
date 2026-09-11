@@ -44,6 +44,13 @@ class FormNoticeEvent extends ChatServiceEvent {
   const FormNoticeEvent(this.message);
 }
 
+/// Previous chat messages loaded from tenant history.
+class ChatHistoryLoadedEvent extends ChatServiceEvent {
+  final List<ChatMessage> messages;
+
+  const ChatHistoryLoadedEvent(this.messages);
+}
+
 /// Visitor session ended (logout / expire).
 class SessionEndedEvent extends ChatServiceEvent {
   const SessionEndedEvent();

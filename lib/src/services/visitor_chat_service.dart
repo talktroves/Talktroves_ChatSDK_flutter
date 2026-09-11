@@ -23,6 +23,7 @@ import 'visitor_polling_service.dart';
 /// 2. Optionally open Socket.IO with visitor query params
 /// 3. Always run polling as fallback / secondary channel
 /// 4. Send messages via `/chatscript/visitor/activity`
+/// 5. Load previous chats via `/api/tenant/history`
 ///
 /// Inbound agent messages arrive through [events] (not as `sendMessage` return).
 class VisitorChatService extends ChatbotService {
@@ -157,6 +158,46 @@ class VisitorChatService extends ChatbotService {
         debugPrint('[VisitorChatService] session create failed: $e\n$st');
       }
       rethrow;
+    }
+  }
+
+  @override
+  Future<List<ChatMessage>> loadChatHistory({String? keyword}) async {
+    if (!config.fetchChatHistory) return const [];
+
+    final session = _session;
+    if (session == null) {
+      VisitorApiLogger.warn('HISTORY skipped — session not ready');
+      return const [];
+    }
+
+    try {
+      final result = await _repository.fetchChatHistory(
+        tenantId: session.tenantId,
+        page: 1,
+        count: config.historyPageSize,
+        sortField: 'createdOn',
+        sortValue: 'desc',
+        keyword: keyword ?? '',
+        filter: 'all',
+        sessionId: session.sessionId,
+        historyBaseUrl: config.historyBaseUrl,
+      );
+
+      final messages = result.toChatMessages();
+      for (final message in messages) {
+        _seenActivityIds.add(message.id);
+      }
+
+      VisitorApiLogger.info('UI ← history messages=${messages.length}');
+      if (messages.isNotEmpty) {
+        _emit(ChatHistoryLoadedEvent(messages));
+      }
+      return messages;
+    } catch (e) {
+      VisitorApiLogger.error('loadChatHistory failed', e);
+      _emit(ChatServiceErrorEvent('Failed to load chat history', cause: e));
+      return const [];
     }
   }
 

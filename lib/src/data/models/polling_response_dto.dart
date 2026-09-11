@@ -19,7 +19,11 @@ class PollingResponseDto {
       return PollingResponseDto(
         activities: json
             .whereType<Map>()
-            .map((item) => _parseActivity(Map<String, dynamic>.from(item)))
+            .map(
+              (item) => IncomingVisitorActivity.fromJson(
+                Map<String, dynamic>.from(item),
+              ),
+            )
             .toList(),
         nextTimestamp: fallbackTimestamp,
       );
@@ -42,7 +46,9 @@ class PollingResponseDto {
     if (activitiesRaw is List) {
       for (final item in activitiesRaw) {
         if (item is Map) {
-          activities.add(_parseActivity(Map<String, dynamic>.from(item)));
+          activities.add(
+            IncomingVisitorActivity.fromJson(Map<String, dynamic>.from(item)),
+          );
         }
       }
     }
@@ -67,45 +73,6 @@ class PollingResponseDto {
     return PollingResult(
       activities: activities,
       nextTimestamp: nextTimestamp,
-    );
-  }
-
-  static IncomingVisitorActivity _parseActivity(Map<String, dynamic> json) {
-    final dataRaw = json['data'];
-    final Map<String, dynamic> data =
-        IncomingVisitorActivity.normalizeActivityData(dataRaw);
-    if (data.isEmpty) {
-      if (json['message'] != null) data['message'] = json['message'];
-      if (json['text'] != null) data['text'] = json['text'];
-      if (json['content'] != null) data['content'] = json['content'];
-    }
-
-    final id = (json['id'] ??
-            json['_id'] ??
-            json['activityId'] ??
-            DateTime.now().microsecondsSinceEpoch)
-        .toString();
-
-    final type = (json['type'] ?? json['event'] ?? 'message').toString();
-
-    DateTime? timestamp;
-    final tsRaw = json['timestamp'] ?? json['createdAt'] ?? json['ts'];
-    if (tsRaw is int) {
-      timestamp = DateTime.fromMillisecondsSinceEpoch(
-        tsRaw > 9999999999 ? tsRaw : tsRaw * 1000,
-      );
-    } else if (tsRaw is String) {
-      timestamp = DateTime.tryParse(tsRaw);
-    }
-
-    return IncomingVisitorActivity(
-      id: id,
-      type: type,
-      data: data,
-      timestamp: timestamp,
-      agentId: json['agentId']?.toString(),
-      agentName: json['agentName']?.toString(),
-      visitorId: json['visitorId']?.toString(),
     );
   }
 

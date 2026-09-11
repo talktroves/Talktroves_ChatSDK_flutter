@@ -89,6 +89,59 @@ class IncomingVisitorActivity {
     this.visitorId,
   });
 
+  /// Parses polling, socket, and history activity payloads.
+  factory IncomingVisitorActivity.fromJson(Map<String, dynamic> json) {
+    final dataRaw = json['data'];
+    final Map<String, dynamic> data = Map<String, dynamic>.from(
+      IncomingVisitorActivity.normalizeActivityData(dataRaw),
+    );
+    if (json['message'] != null) data['message'] ??= json['message'];
+    if (json['text'] != null) data['text'] ??= json['text'];
+    if (json['content'] != null) data['content'] ??= json['content'];
+    if (json['lastMessage'] != null) data['message'] ??= json['lastMessage'];
+
+    final id = (json['id'] ??
+            json['_id'] ??
+            json['activityId'] ??
+            json['messageId'] ??
+            DateTime.now().microsecondsSinceEpoch)
+        .toString();
+
+    final type = (json['type'] ?? json['event'] ?? 'message').toString();
+
+    return IncomingVisitorActivity(
+      id: id,
+      type: type,
+      data: data,
+      timestamp: _parseTimestamp(
+        json['timestamp'] ??
+            json['createdOn'] ??
+            json['createdAt'] ??
+            json['created_on'] ??
+            json['ts'],
+      ),
+      agentId: json['agentId']?.toString() ?? json['agent_id']?.toString(),
+      agentName:
+          json['agentName']?.toString() ?? json['agent_name']?.toString(),
+      visitorId: json['visitorId']?.toString() ??
+          json['visitor_id']?.toString() ??
+          json['sessionId']?.toString() ??
+          json['sid']?.toString(),
+    );
+  }
+
+  static DateTime? _parseTimestamp(dynamic tsRaw) {
+    if (tsRaw is int) {
+      return DateTime.fromMillisecondsSinceEpoch(
+        tsRaw > 9999999999 ? tsRaw : tsRaw * 1000,
+      );
+    }
+    if (tsRaw is String) {
+      return DateTime.tryParse(tsRaw);
+    }
+    return null;
+  }
+
   /// TalkTroves `forms` activities use `type: forms` with key/value entries.
   bool get isFormActivity => type.toLowerCase() == 'forms';
 

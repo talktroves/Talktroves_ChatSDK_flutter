@@ -48,6 +48,7 @@ class _TalktrovesChatDemoPageState extends State<TalktrovesChatDemoPage> {
         domain: TalkTrovesConfig.domain,
         enableSocket: TalkTrovesConfig.enableSocket,
         pollingInterval: TalkTrovesConfig.pollingInterval,
+        historyBaseUrl: TalkTrovesConfig.historyBaseUrl,
       ),
       userData: const SupportUserData(
         name: 'Flutter Dummy User',

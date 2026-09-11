@@ -1,3 +1,8 @@
+## 0.0.5
+
+* Load previous visitor chats from `/api/tenant/history` after session start.
+* Show restored history messages in the chat widget.
+
 ## 0.0.4
 
 * Add customizable bot avatar via `botIcon` and `botAvatar`.

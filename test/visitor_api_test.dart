@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:talktroves_chatsdk/src/data/models/create_session_request_dto.dart';
 import 'package:talktroves_chatsdk/src/data/models/create_session_response_dto.dart';
+import 'package:talktroves_chatsdk/src/data/models/history_response_dto.dart';
 import 'package:talktroves_chatsdk/src/data/models/polling_response_dto.dart';
 import 'package:talktroves_chatsdk/src/domain/entities/visitor_activity.dart';
+import 'package:talktroves_chatsdk/src/models/chat_message.dart';
 
 void main() {
   group('CreateSessionRequestDto', () {
@@ -217,6 +219,87 @@ void main() {
         'data': {'status': 'ended'},
         'hidden': false,
       });
+    });
+  });
+
+  group('HistoryResponseDto', () {
+    test('parses nested conversation activities in chronological order', () {
+      final dto = HistoryResponseDto.fromJson({
+        'isSuccess': true,
+        'data': {
+          'data': [
+            {
+              '_id': 'conv1',
+              'visitorId': 'sid-1',
+              'email': 'flutter-dummy@example.com',
+              'createdOn': '2026-09-01T10:00:00.000Z',
+              'activities': [
+                {
+                  'id': 'm2',
+                  'type': 'message',
+                  'agentId': 'agent-1',
+                  'agentName': 'Bot',
+                  'createdOn': '2026-09-01T10:00:05.000Z',
+                  'data': {'message': 'Your order is on the way.'},
+                },
+                {
+                  'id': 'm1',
+                  'type': 'message',
+                  'visitorId': 'sid-1',
+                  'createdOn': '2026-09-01T10:00:01.000Z',
+                  'data': {'message': 'Where is my order?'},
+                },
+              ],
+            },
+          ],
+          'recordsTotal': 1,
+        },
+      }, sessionId: 'sid-1');
+
+      expect(dto.activities, hasLength(2));
+      final messages = dto.toEntity().toChatMessages();
+      expect(messages, hasLength(2));
+      expect(messages.first.content, 'Where is my order?');
+      expect(messages.first.sender, MessageSender.user);
+      expect(messages.last.content, 'Your order is on the way.');
+      expect(messages.last.sender, MessageSender.assistant);
+    });
+
+    test('keeps only conversations matching visitor email keyword', () {
+      final dto = HistoryResponseDto.fromJson({
+        'data': [
+          {
+            'visitorId': 'other-visitor',
+            'email': 'someone@example.com',
+            'messages': [
+              {
+                'id': 'skip',
+                'type': 'message',
+                'createdOn': '2026-09-01T10:00:00.000Z',
+                'data': {'message': 'Other visitor'},
+              },
+            ],
+          },
+          {
+            'visitorId': 'sid-9',
+            'email': 'flutter-dummy@example.com',
+            'messages': [
+              {
+                'id': 'keep',
+                'type': 'message',
+                'agentId': 'bot',
+                'createdOn': '2026-09-01T11:00:00.000Z',
+                'data': {'message': 'Welcome back'},
+              },
+            ],
+          },
+        ],
+      }, keyword: 'flutter-dummy@example.com');
+
+      final messages = dto.toEntity().toChatMessages();
+      expect(messages, hasLength(1));
+      expect(messages.single.content, 'Welcome back');
+      expect(messages.single.sender, MessageSender.assistant);
     });
   });
 }

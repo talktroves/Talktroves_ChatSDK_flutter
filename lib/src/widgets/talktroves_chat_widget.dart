@@ -272,6 +272,11 @@ class _TalktrovesChatWidgetState extends State<TalktrovesChatWidget> {
   Future<void> _bootstrapService() async {
     try {
       await _chatbotService.start();
+      unawaited(
+        _chatbotService.loadChatHistory(
+          keyword: _localUserData?.email ?? _localUserData?.name,
+        ),
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -291,6 +296,10 @@ class _TalktrovesChatWidgetState extends State<TalktrovesChatWidget> {
     switch (event) {
       case IncomingMessageEvent(:final message):
         setState(() {
+          if (_messages.any((existing) => existing.id == message.id)) {
+            _isTyping = false;
+            return;
+          }
           _messages.add(message);
           _isTyping = false;
         });
@@ -320,6 +329,8 @@ class _TalktrovesChatWidgetState extends State<TalktrovesChatWidget> {
           _isTyping = false;
         });
         _scrollToBottom();
+      case ChatHistoryLoadedEvent(:final messages):
+        _applyChatHistory(messages);
       case SessionEndedEvent():
         setState(() {
           _sessionReady = false;
@@ -335,6 +346,31 @@ class _TalktrovesChatWidgetState extends State<TalktrovesChatWidget> {
         }());
         break;
     }
+  }
+
+  void _applyChatHistory(List<ChatMessage> history) {
+    if (history.isEmpty || !mounted) return;
+
+    setState(() {
+      final existingIds = _messages.map((message) => message.id).toSet();
+      final incoming = history
+          .where((message) => !existingIds.contains(message.id))
+          .toList();
+      if (incoming.isEmpty) return;
+
+      var insertAt = 0;
+      while (insertAt < _messages.length) {
+        final current = _messages[insertAt];
+        final isGreeting = current.isOrderWelcome ||
+            (current.sender == MessageSender.assistant &&
+                current.content.contains('How can I help you today?'));
+        if (!isGreeting) break;
+        insertAt++;
+      }
+
+      _messages.insertAll(insertAt, incoming);
+    });
+    _scrollToBottom();
   }
 
   @override

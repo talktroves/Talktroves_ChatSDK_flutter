@@ -29,3 +29,8 @@ class VisitorActivityException extends VisitorException {
 class VisitorPollingException extends VisitorException {
   const VisitorPollingException(super.message, {super.statusCode, super.cause});
 }
+
+/// Thrown when loading tenant chat history fails.
+class VisitorHistoryException extends VisitorException {
+  const VisitorHistoryException(super.message, {super.statusCode, super.cause});
+}

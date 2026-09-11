@@ -1,3 +1,4 @@
+import '../../domain/entities/chat_history.dart';
 import '../../domain/entities/polling_result.dart';
 import '../../domain/entities/visitor_activity.dart';
 import '../../domain/entities/visitor_session.dart';
@@ -70,6 +71,32 @@ class VisitorRepositoryImpl implements VisitorRepository {
       tenantId: tenantId,
       sessionId: sessionId,
       timestamp: timestamp,
+    );
+    return response.toEntity();
+  }
+
+  @override
+  Future<ChatHistoryResult> fetchChatHistory({
+    required String tenantId,
+    int page = 1,
+    int count = 20,
+    String sortField = 'createdOn',
+    String sortValue = 'desc',
+    String keyword = '',
+    String filter = 'all',
+    String? sessionId,
+    String? historyBaseUrl,
+  }) async {
+    final response = await _remote.fetchTenantHistory(
+      tenantId: tenantId,
+      page: page,
+      count: count,
+      sortField: sortField,
+      sortValue: sortValue,
+      keyword: keyword,
+      filter: filter,
+      sessionId: sessionId,
+      historyBaseUrl: historyBaseUrl,
     );
     return response.toEntity();
   }

@@ -23,6 +23,12 @@ abstract class ChatbotService {
   /// Create session / connect socket / start polling.
   Future<void> start() async {}
 
+  /// Loads previous chat messages when the backend supports history.
+  ///
+  /// Visitor SDK also emits [ChatHistoryLoadedEvent].
+  Future<List<ChatMessage>> loadChatHistory({String? keyword}) async =>
+      const [];
+
   /// Tear down polling / sockets.
   Future<void> stop() async {}
 

@@ -1,3 +1,4 @@
+import '../entities/chat_history.dart';
 import '../entities/polling_result.dart';
 import '../entities/visitor_activity.dart';
 import '../entities/visitor_session.dart';
@@ -29,5 +30,18 @@ abstract class VisitorRepository {
     required String tenantId,
     required String sessionId,
     required String timestamp,
+  });
+
+  /// Loads previous chats from `/api/tenant/history`.
+  Future<ChatHistoryResult> fetchChatHistory({
+    required String tenantId,
+    int page = 1,
+    int count = 20,
+    String sortField = 'createdOn',
+    String sortValue = 'desc',
+    String keyword = '',
+    String filter = 'all',
+    String? sessionId,
+    String? historyBaseUrl,
   });
 }

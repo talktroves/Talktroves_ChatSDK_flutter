@@ -1,5 +1,6 @@
 export 'src/core/config/visitor_config.dart';
 export 'src/core/errors/visitor_exception.dart';
+export 'src/domain/entities/chat_history.dart';
 export 'src/domain/entities/visitor_activity.dart';
 export 'src/domain/entities/visitor_session.dart';
 export 'src/domain/entities/polling_result.dart';

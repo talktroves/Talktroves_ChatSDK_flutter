@@ -7,6 +7,7 @@ import '../../core/errors/visitor_exception.dart';
 import '../../core/logging/visitor_api_logger.dart';
 import '../models/create_session_request_dto.dart';
 import '../models/create_session_response_dto.dart';
+import '../models/history_response_dto.dart';
 import '../models/polling_response_dto.dart';
 import '../models/send_activity_request_dto.dart';
 
@@ -230,6 +231,88 @@ class VisitorRemoteDataSource {
       VisitorApiLogger.error('pollActivities failed', e);
       throw VisitorPollingException(
         'Failed to poll visitor activities',
+        cause: e,
+      );
+    }
+  }
+
+  Future<HistoryResponseDto> fetchTenantHistory({
+    required String tenantId,
+    int page = 1,
+    int count = 20,
+    String sortField = 'createdOn',
+    String sortValue = 'desc',
+    String keyword = '',
+    String filter = 'all',
+    String? sessionId,
+    String? historyBaseUrl,
+  }) async {
+    final origin = (historyBaseUrl ?? baseUrl).endsWith('/')
+        ? (historyBaseUrl ?? baseUrl).substring(
+            0,
+            (historyBaseUrl ?? baseUrl).length - 1,
+          )
+        : (historyBaseUrl ?? baseUrl);
+    final uri = Uri.parse('$origin${VisitorApiPaths.tenantHistory}').replace(
+      queryParameters: {
+        'tenantId': tenantId,
+        'page': page.toString(),
+        'count': count.toString(),
+        'sortField': sortField,
+        'sortValue': sortValue,
+        'keyword': keyword,
+        'filter': filter,
+      },
+    );
+
+    try {
+      VisitorApiLogger.request(method: 'GET', url: uri);
+
+      final response = await _client.get(uri, headers: _jsonHeaders);
+
+      VisitorApiLogger.response(
+        method: 'GET',
+        url: uri,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
+
+      final body = _decodeBody(response.body);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw VisitorHistoryException(
+          'Failed to load chat history',
+          statusCode: response.statusCode,
+          cause: body,
+        );
+      }
+
+      if (body is Map &&
+          (body['isSuccess'] == false || body['isServerError'] == true)) {
+        throw VisitorHistoryException(
+          body['message']?.toString() ??
+              body['serverError']?.toString() ??
+              'Failed to load chat history',
+          statusCode: response.statusCode,
+          cause: body,
+        );
+      }
+
+      final dto = HistoryResponseDto.fromJson(
+        body,
+        page: page,
+        sessionId: sessionId,
+        keyword: keyword,
+      );
+      VisitorApiLogger.info(
+        'HISTORY OK → activities=${dto.activities.length} page=$page',
+      );
+      return dto;
+    } on VisitorException {
+      rethrow;
+    } catch (e) {
+      VisitorApiLogger.error('fetchTenantHistory failed', e);
+      throw VisitorHistoryException(
+        'Failed to load chat history',
         cause: e,
       );
     }
